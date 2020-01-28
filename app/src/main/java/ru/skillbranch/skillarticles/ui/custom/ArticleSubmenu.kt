@@ -20,12 +20,13 @@ class ArticleSubmenu @JvmOverloads constructor(
 ) :ConstraintLayout(context, attrs, defStyleAttr) {
     private var centerY: Float = context.dpToPx(200)
     private var centerX: Float = context.dpToPx(96)
-    private var isOpen: Boolean = false
+    var isOpen: Boolean = false
 
     init {
         View.inflate(context, R.layout.layout_submenu, this)
         val materialBg = MaterialShapeDrawable.createWithElevationOverlay(context, elevation)
         background = materialBg
+        visibility = View.GONE
     }
 
     fun open() {
