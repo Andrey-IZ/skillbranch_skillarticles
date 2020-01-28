@@ -80,7 +80,7 @@ class ArticleViewModel(private val articleId: String):
 
         val msg = if (currentState.isBookmark) Notify.TextMessage("Add to bookmarks")
         else {
-            Notify.TextMessage("Add to bookmarks")
+            Notify.TextMessage("Remove from bookmarks")
         }
         notify(msg)
     }
@@ -96,7 +96,7 @@ class ArticleViewModel(private val articleId: String):
         val msg = if (currentState.isLike) Notify.TextMessage("Mark is liked")
         else {
             Notify.ActionMessage(
-                "Don't like it anymore",
+                "Don`t like it anymore",
                 "No, still like it",   // label on the snackbar
                 toggleLike  // handler function, if press "No, still likes it " on snackbar
             )
