@@ -43,6 +43,7 @@
         android:layout_height="96dp"
         android:layout_gravity="bottom|right"
         android:elevation="8dp"
+        app:layout_behavior=".ui.custom.behaviors.SubmenuBehavior"
         android:layout_marginRight="8dp"
         android:layout_marginBottom="8dp"
         app:layout_dodgeInsetEdges="bottom"/>
@@ -54,6 +55,7 @@
         android:layout_gravity="bottom"
         android:theme="@style/ArticleBarsTheme"
         android:elevation="4dp"
+        app:layout_behavior=".ui.custom.behaviors.BottombarBehavior"
         app:layout_insetEdge="bottom"/>
 
 

@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">SkillArticles</string>
+    <string name="TAG">skillarticles</string>
 </resources>
