@@ -124,7 +124,7 @@ class ArticleViewModel(private val articleId: String):
 
 data class ArticleState (
     val isAuth: Boolean = false,             // пользователь авторизован
-    val isLoadingContent: Boolean = true,    // контенет загружается
+    val isLoadingContent: Boolean = true,    // контент загружается
     val isLoadingReviews: Boolean = true,    // отзывы загружаются
     val isLike: Boolean = false,             // отмечено как Like
     val isBookmark: Boolean = false,         // в заклвдках
