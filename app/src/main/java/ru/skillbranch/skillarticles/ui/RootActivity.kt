@@ -1,21 +1,17 @@
 package ru.skillbranch.skillarticles.ui
 
-import android.app.SearchManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
-import android.view.View
 import android.widget.ImageView
-import android.widget.SearchView
+import androidx.appcompat.widget.SearchView
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.widget.Toolbar
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_root.*
 import kotlinx.android.synthetic.main.activity_root.toolbar
-import kotlinx.android.synthetic.main.activity_root.view.*
 import kotlinx.android.synthetic.main.layout_bootombar.*
 import kotlinx.android.synthetic.main.layout_submenu.*
 import ru.skillbranch.skillarticles.R
@@ -132,13 +128,11 @@ class RootActivity : AppCompatActivity() {
     }
 
     private fun renderUI(data: ArticleState) {
-        Log.v(getString(R.string.TAG), "renderUI($data)")
 
         // bind submenu state
         btn_settings.isChecked = data.isShowMenu
         if (data.isShowMenu) submenu.open() else submenu.close()
 
-        Log.v(getString(R.string.TAG), "data.isLike = ${data.isLike}")
         // bind article person data
         btn_like.isChecked = data.isLike
         btn_bookmark.isChecked = data.isBookmark
