@@ -55,7 +55,6 @@
         android:layout_gravity="bottom"
         android:theme="@style/ArticleBarsTheme"
         android:elevation="4dp"
-        app:layout_behavior=".ui.custom.behaviors.BottombarBehavior"
         app:layout_insetEdge="bottom"/>
 
 
