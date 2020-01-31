@@ -14,6 +14,7 @@ import kotlinx.android.synthetic.main.activity_root.*
 import kotlinx.android.synthetic.main.activity_root.toolbar
 import kotlinx.android.synthetic.main.layout_bootombar.*
 import kotlinx.android.synthetic.main.layout_submenu.*
+import kotlinx.android.synthetic.main.search_view_layout.*
 import ru.skillbranch.skillarticles.R
 import ru.skillbranch.skillarticles.extensions.dpToIntPx
 import ru.skillbranch.skillarticles.viewmodels.ArticleState
@@ -56,13 +57,6 @@ class RootActivity : AppCompatActivity() {
         val menuItem = menu?.findItem(R.id.action_search)
         val searchView = menuItem?.actionView as? SearchView
         searchView?.queryHint = getString(R.string.article_search_placeholder)
-
-        //restore SearchView
-        if (isSearching) {
-            menuItem?.expandActionView()
-            searchView?.setQuery(searchQuery, false)
-            searchView?.clearFocus()
-        }
 
         menuItem?.setOnActionExpandListener(object : MenuItem.OnActionExpandListener {
             override fun onMenuItemActionExpand(item: MenuItem?): Boolean {
@@ -129,9 +123,25 @@ class RootActivity : AppCompatActivity() {
         btn_bookmark.setOnClickListener { viewModel.handleBookmark() }
         btn_settings.setOnClickListener { viewModel.handleToggleMenu() }
         btn_share.setOnClickListener { viewModel.handleShare() }
+
+        btn_result_up.setOnClickListener{
+            if (search_view.hasFocus()) search_view.clearFocus()
+            viewModel.handleUpResult()
+        }
+
+        btn_result_down.setOnClickListener {
+            if (search_view.hasFocus()) search_view.clearFocus()
+            viewModel.handDownResult()
+        }
+        btn_search_close.setOnClickListener {
+            viewModel.handleSearchMode(false)
+            invalidateOptionsMenu()
+        }
     }
 
     private fun renderUI(data: ArticleState) {
+
+        bottombar.setSearchMode(data.isSearch)
 
         // bind submenu state
         btn_settings.isChecked = data.isShowMenu

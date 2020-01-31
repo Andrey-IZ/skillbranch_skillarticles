@@ -120,6 +120,14 @@ class ArticleViewModel(private val articleId: String):
     override fun handleSearch(query: String?) {
         updateState { it.copy(searchQuery = query) }
     }
+
+    fun handleUpResult() {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    fun handDownResult() {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
 }
 
 data class ArticleState (
