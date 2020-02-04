@@ -23,7 +23,7 @@ class Bottombar @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : ConstraintLayout(context, attrs, defStyleAttr), CoordinatorLayout.AttachedBehavior {
 
-    private var isSearchMode = false
+    var isSearchMode = false
     init {
       View.inflate(context, R.layout.layout_bootombar, this)
         val materialBg = MaterialShapeDrawable.createWithElevationOverlay(context, elevation)
@@ -42,7 +42,7 @@ class Bottombar @JvmOverloads constructor(
         return savedState
     }
 
-    fun setSearchMode(search: Boolean) {
+    fun setSearchState(search: Boolean) {
         if (isSearchMode == search || !isAttachedToWindow) return
         isSearchMode = search
         if (isSearchMode) animateShowSearchPanel()
@@ -59,7 +59,6 @@ class Bottombar @JvmOverloads constructor(
             endRadius,
             0f
         )
-        va.duration = 5000
         va.doOnEnd { reveal.isVisible = false }
         va.start()
     }
@@ -78,7 +77,7 @@ class Bottombar @JvmOverloads constructor(
         va.start()
     }
 
-    fun bindSerachInfo(searchCount: Int = 0, position: Int = 0) {
+    fun bindSearchInfo(searchCount: Int = 0, position: Int = 0) {
         if (searchCount == 0) {
             tv_search_result.text = "not found"
             btn_result_down.isEnabled = false
