@@ -1,17 +1,18 @@
 package ru.skillbranch.skillarticles.extensions
 
-fun String?.indexesOf(query: String): List<Int> {
+fun String?.indexesOf(substr: String, ignoreCase: Boolean = true): List<Int> {
 
-    val pattern = query.replace("(\\W|\\S)", "")
+    val pattern = substr.replace("(\\W|\\S)", "")
     if (pattern.isEmpty()) return emptyList()
 
-    val re = Regex(
-        pattern,
-        setOf(RegexOption.MULTILINE, RegexOption.IGNORE_CASE)
-    )
+    val flags = mutableSetOf(RegexOption.MULTILINE)
+    if (ignoreCase)
+        flags.add(RegexOption.IGNORE_CASE)
+    val re = Regex(pattern, flags)
+
     val results = this?.let {
         re.findAll(it)
-            .map { matchResult ->  matchResult.range.first }
+            .map { matchResult -> matchResult.range.first }
             .toList()
     }
 

@@ -36,6 +36,7 @@
             android:layout_margin="16dp"
             android:focusable="true"
             android:focusableInTouchMode="true"
+            android:saveEnabled="false"
             android:text="is loading..."/>
     </androidx.core.widget.NestedScrollView>
 
