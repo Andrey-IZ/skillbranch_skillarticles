@@ -11,6 +11,8 @@ class PrefManager(context: Context) {
     }
 
     fun clearAll() {
-        preferences.edit().clear()
+        val editor = preferences.edit()
+        editor.clear()
+        editor.apply()
     }
 }
