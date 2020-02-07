@@ -6,12 +6,11 @@ import android.content.SharedPreferences
 import ru.skillbranch.skillarticles.data.delegates.PrefDelegate
 
 class PrefManager(context: Context) {
-    val editor: SharedPreferences.Editor by lazy { preferences.edit()}
     val preferences : SharedPreferences by lazy {
         context.getSharedPreferences("", MODE_PRIVATE)
     }
 
     fun clearAll() {
-        editor.clear()
+        preferences.edit().clear()
     }
 }
