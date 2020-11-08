@@ -41,30 +41,26 @@ class RootActivity : AppCompatActivity() {
         val vmFactory = ViewModelFactory("0")
         viewModel = ViewModelProviders.of(this, vmFactory).get(ArticleViewModel::class.java)
         viewModel.observeState(this) {
-            //restore search mode
-            if (it.isSearch) {
-                isSearching = true
-                searchQuery = it.searchQuery
-            }
-            renderUi(it)
+            renderUI(it)
         }
         viewModel.observeNotifications(this) {
             renderNotification(it)
         }
-
+        this.btn_share.layoutParams
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.menu_search, menu)
-        val menuItem = menu?.findItem(R.id.action_search)
-        val searchView = (menuItem?.actionView as? SearchView)
-        searchView?.queryHint = getString(R.string.article_search_placeholder)
+        val searchMenuItem = menu?.findItem(R.id.action_search)
+        val searchView = searchMenuItem?.actionView as SearchView
+        searchView.apply {
+            queryHint = "search"
+            isIconified = false
 
-        if (isSearching) {
-            menuItem?.expandActionView()
-            searchView?.setQuery(searchQuery, false)
-            searchView?.clearFocus()
-        }
+            setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+                override fun onQueryTextSubmit(query: String?): Boolean {
+                    return true
+                }
 
         menuItem?.setOnActionExpandListener(object : MenuItem.OnActionExpandListener {
             override fun onMenuItemActionExpand(item: MenuItem?): Boolean {

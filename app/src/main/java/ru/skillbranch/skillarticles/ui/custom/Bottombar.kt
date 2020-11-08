@@ -14,6 +14,7 @@ class Bottombar @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : ConstraintLayout(context, attrs, defStyleAttr) {
+
     init {
         View.inflate(context, R.layout.layout_bottombar, this)
         val materialBg = MaterialShapeDrawable.createWithElevationOverlay(context)
