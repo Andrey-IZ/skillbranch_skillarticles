@@ -7,6 +7,7 @@ import android.util.AttributeSet
 import android.view.View
 import android.view.ViewAnimationUtils
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.animation.doOnEnd
 import androidx.core.animation.doOnStart
 import com.google.android.material.shape.MaterialShapeDrawable
 import ru.skillbranch.skillarticles.R
@@ -17,16 +18,18 @@ class ArticleSubmenu @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) :ConstraintLayout(context, attrs, defStyleAttr) {
-    private var centerY: Float = context.dpToPx(200)
-    private var centerX: Float = context.dpToPx(96)
-    var isOpen: Boolean = false
+) : ConstraintLayout(context, attrs, defStyleAttr) {
+
+    var isOpen = false
+    private var centerX: Float = context.dpToPx(200)
+    private var centerY: Float = context.dpToPx(96)
 
     init {
         View.inflate(context, R.layout.layout_submenu, this)
-        val materialBg = MaterialShapeDrawable.createWithElevationOverlay(context, elevation)
+        //add material bg for handle elevation and color surface
+        val materialBg = MaterialShapeDrawable.createWithElevationOverlay(context)
+        materialBg.elevation = elevation
         background = materialBg
-        visibility = View.GONE
     }
 
     fun open() {
@@ -36,7 +39,7 @@ class ArticleSubmenu @JvmOverloads constructor(
     }
 
     fun close() {
-        if(!isOpen || !isAttachedToWindow) return
+        if (!isOpen || !isAttachedToWindow) return
         isOpen = false
         animatedHide()
     }
@@ -44,8 +47,11 @@ class ArticleSubmenu @JvmOverloads constructor(
     private fun animatedShow() {
         val endRadius = hypot(centerX, centerY).toInt()
         val anim = ViewAnimationUtils.createCircularReveal(
-            this, centerX.toInt(), centerY.toInt(),
-            0F, endRadius.toFloat()
+            this,
+            centerX.toInt(),
+            centerY.toInt(),
+            0f,
+            endRadius.toFloat()
         )
         anim.doOnStart {
             visibility = View.VISIBLE
@@ -56,22 +62,27 @@ class ArticleSubmenu @JvmOverloads constructor(
     private fun animatedHide() {
         val endRadius = hypot(centerX, centerY).toInt()
         val anim = ViewAnimationUtils.createCircularReveal(
-            this, centerX.toInt(), centerY.toInt(),
-            endRadius.toFloat(),0F
+            this,
+            centerX.toInt(),
+            centerY.toInt(),
+            endRadius.toFloat(),
+            0f
         )
-        anim.doOnStart {
+        anim.doOnEnd {
             visibility = View.GONE
         }
         anim.start()
     }
 
+    //save state
     override fun onSaveInstanceState(): Parcelable? {
         val savedState = SavedState(super.onSaveInstanceState())
         savedState.ssIsOpen = isOpen
         return savedState
     }
 
-    override fun onRestoreInstanceState(state: Parcelable?) {
+    //restore state
+    override fun onRestoreInstanceState(state: Parcelable) {
         super.onRestoreInstanceState(state)
         if (state is SavedState) {
             isOpen = state.ssIsOpen
@@ -79,17 +90,18 @@ class ArticleSubmenu @JvmOverloads constructor(
         }
     }
 
-    private class SavedState: BaseSavedState, Parcelable {
-        var ssIsOpen = false
+    private class SavedState : BaseSavedState, Parcelable {
+        var ssIsOpen: Boolean = false
 
         constructor(superState: Parcelable?) : super(superState)
-        constructor(source: Parcel) : super(source) {
-            ssIsOpen = source.readInt() == 1
+
+        constructor(src: Parcel) : super(src) {
+            ssIsOpen = src.readInt() == 1
         }
 
-        override fun writeToParcel(parcel: Parcel, flags: Int) {
-            super.writeToParcel(parcel, flags)
-            parcel.writeByte(if (ssIsOpen) 1 else 0)
+        override fun writeToParcel(dst: Parcel, flags: Int) {
+            super.writeToParcel(dst, flags)
+            dst.writeInt(if (ssIsOpen) 1 else 0)
         }
 
         override fun describeContents() = 0
@@ -99,4 +111,5 @@ class ArticleSubmenu @JvmOverloads constructor(
             override fun newArray(size: Int): Array<SavedState?> = arrayOfNulls(size)
         }
     }
+
 }

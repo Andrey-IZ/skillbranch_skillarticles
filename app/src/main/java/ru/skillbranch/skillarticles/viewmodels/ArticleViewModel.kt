@@ -8,12 +8,17 @@ import ru.skillbranch.skillarticles.extensions.data.toAppSettings
 import ru.skillbranch.skillarticles.extensions.data.toArticlePersonalInfo
 import ru.skillbranch.skillarticles.extensions.format
 
-class ArticleViewModel(private val articleId: String):
-    BaseViewModel<ArticleState>(ArticleState()), IArticleViewModel {
+class ArticleViewModel(private val articleId: String) :
+    BaseViewModel<ArticleState>(ArticleState()),
+    IArticleViewModel {
 
     private val repository = ArticleRepository
 
+    private var isSearch: Boolean = false
+    private var searchQuery: String? = null
+
     init {
+        //подписываемся на наши источники данных
         subscribeOnDataSource(getArticleData()) { article, state ->
             article ?: return@subscribeOnDataSource null
             state.copy(
@@ -21,7 +26,8 @@ class ArticleViewModel(private val articleId: String):
                 title = article.title,
                 category = article.category,
                 categoryIcon = article.categoryIcon,
-                date = article.date.format()
+                date = article.date.format(),
+                author = article.author
             )
         }
 
@@ -44,21 +50,30 @@ class ArticleViewModel(private val articleId: String):
         subscribeOnDataSource(repository.getAppSettings()) { settings, state ->
             state.copy(
                 isDarkMode = settings.isDarkMode,
-                isBigText = settings.isBigText
+                isBigText = settings.isBigText,
+                isSearch = isSearch,
+                searchQuery = searchQuery
             )
         }
     }
 
+    //load text from network
     override fun getArticleContent(): LiveData<List<Any>?> {
         return repository.loadArticleContent(articleId)
     }
 
+    //load data from db
     override fun getArticleData(): LiveData<ArticleData?> {
         return repository.getArticle(articleId)
     }
 
+    //load data from db
     override fun getArticlePersonalInfo(): LiveData<ArticlePersonalInfo?> {
         return repository.loadArticlePersonalInfo(articleId)
+    }
+
+    override fun handleUpText() {
+        repository.updateSettings(currentState.toAppSettings().copy(isBigText = true))
     }
 
     override fun handleNightMode() {
@@ -66,23 +81,8 @@ class ArticleViewModel(private val articleId: String):
         repository.updateSettings(settings.copy(isDarkMode = !settings.isDarkMode))
     }
 
-    override fun handleUpText() {
-        repository.updateSettings(currentState.toAppSettings().copy(isBigText = true))
-    }
-
     override fun handleDownText() {
         repository.updateSettings(currentState.toAppSettings().copy(isBigText = false))
-    }
-
-    override fun handleBookmark() {
-        val info = currentState.toArticlePersonalInfo()
-        repository.updateArticlePersonalInfo(info.copy(isBookmark = !info.isBookmark))
-
-        val msg = if (currentState.isBookmark) Notify.TextMessage("Add to bookmarks")
-        else {
-            Notify.TextMessage("Remove from bookmarks")
-        }
-        notify(msg)
     }
 
     override fun handleLike() {
@@ -91,16 +91,25 @@ class ArticleViewModel(private val articleId: String):
             repository.updateArticlePersonalInfo(info.copy(isLike = !info.isLike))
         }
         toggleLike()
-
-
         val msg = if (currentState.isLike) Notify.TextMessage("Mark is liked")
         else {
             Notify.ActionMessage(
-                "Don`t like it anymore",
-                "No, still like it",   // label on the snackbar
-                toggleLike  // handler function, if press "No, still likes it " on snackbar
+                "Don`t like it anymore", //message
+                "No, still like it", //action label on snackbar
+                toggleLike //handler function, if press "No, still like it" on snackbar, then toggle again
             )
         }
+        notify(msg)
+    }
+
+    override fun handleBookmark() {
+        val toggleBookmark = {
+            val info = currentState.toArticlePersonalInfo()
+            repository.updateArticlePersonalInfo(info.copy(isBookmark = !info.isBookmark))
+        }
+        toggleBookmark()
+        val msg = if (currentState.isBookmark) Notify.TextMessage("Add to bookmarks")
+        else Notify.TextMessage("Remove from bookmarks")
         notify(msg)
     }
 
@@ -114,7 +123,7 @@ class ArticleViewModel(private val articleId: String):
     }
 
     override fun handleSearchMode(isSearch: Boolean) {
-        updateState { it.copy(isSearch = isSearch) }
+        updateState { it.copy(isSearch = !it.isSearch) }
     }
 
     override fun handleSearch(query: String?) {
