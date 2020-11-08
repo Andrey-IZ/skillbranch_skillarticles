@@ -1,4 +1,4 @@
-package ru.skillbranch.skillarticles.markdown
+package ru.skillbranch.skillarticles.ui.custom.markdown
 
 import android.content.Context
 import android.graphics.Typeface
@@ -10,9 +10,11 @@ import android.text.style.URLSpan
 import androidx.core.text.buildSpannedString
 import androidx.core.text.inSpans
 import ru.skillbranch.skillarticles.R
+import ru.skillbranch.skillarticles.data.repositories.Element
+import ru.skillbranch.skillarticles.data.repositories.MarkdownElement
 import ru.skillbranch.skillarticles.extensions.attrValue
 import ru.skillbranch.skillarticles.extensions.dpToPx
-import ru.skillbranch.skillarticles.markdown.spans.*
+import ru.skillbranch.skillarticles.ui.custom.spans.*
 
 class MarkdownBuilder(context: Context) {
     private val colorSecondary = context.attrValue(R.attr.colorSecondary)
@@ -27,12 +29,12 @@ class MarkdownBuilder(context: Context) {
     private val headerMarginBottom = context.dpToPx(8)
     private val ruleWidth = context.dpToPx(2)
     private val cornerRadius = context.dpToPx(8)
-    private val linkIcon = context.getDrawable(R.drawable.ic_link_black_24dp)!!
+    private val linkIcon =
+        context.getDrawable(R.drawable.ic_link_black_24dp)!!.apply { setTint(colorSecondary) }
 
-    fun markdownToSpan(string: String): SpannedString {
-        val markdown = MarkdownParser.parse(string)
+    fun markdownToSpan(textContent: MarkdownElement.Text): SpannedString {
         return buildSpannedString {
-            markdown.elements.forEach { buildElement(it, this) }
+            textContent.elements.forEach { buildElement(it, this) }
         }
     }
 
@@ -40,10 +42,9 @@ class MarkdownBuilder(context: Context) {
         return builder.apply {
             when (element) {
                 is Element.Text -> append(element.text)
+
                 is Element.UnorderedListItem -> {
-                    inSpans(
-                        UnorderedListSpan(gap, bulletRadius, colorSecondary)
-                    ) {
+                    inSpans(UnorderedListSpan(gap, bulletRadius, colorSecondary)) {
                         for (child in element.elements) {
                             buildElement(child, builder)
                         }
@@ -73,43 +74,33 @@ class MarkdownBuilder(context: Context) {
                     }
                 }
                 is Element.Italic -> {
-                    inSpans(
-                        StyleSpan(Typeface.ITALIC)
-                    ) {
+                    inSpans(StyleSpan(Typeface.ITALIC)) {
                         for (child in element.elements) {
                             buildElement(child, builder)
                         }
                     }
                 }
                 is Element.Bold -> {
-                    inSpans(
-                        StyleSpan(Typeface.BOLD)
-                    ) {
+                    inSpans(StyleSpan(Typeface.BOLD)) {
                         for (child in element.elements) {
                             buildElement(child, builder)
                         }
                     }
                 }
                 is Element.Strike -> {
-                    inSpans(
-                        StrikethroughSpan()
-                    ) {
+                    inSpans(StrikethroughSpan()) {
                         for (child in element.elements) {
                             buildElement(child, builder)
                         }
                     }
                 }
                 is Element.Rule -> {
-                    inSpans(
-                        HorizontalRuleSpan(ruleWidth, colorDivider)
-                    ) {
+                    inSpans(HorizontalRuleSpan(ruleWidth, colorDivider)) {
                         append(element.text)
                     }
                 }
                 is Element.InlineCode -> {
-                    inSpans(
-                        InlineCodeSpan(colorOnSurface, colorSurface, cornerRadius, gap)
-                    ) {
+                    inSpans(InlineCodeSpan(colorOnSurface, colorSurface, cornerRadius, gap)) {
                         append(element.text)
                     }
                 }
@@ -122,24 +113,13 @@ class MarkdownBuilder(context: Context) {
                     }
                 }
                 is Element.OrderedListItem -> {
-                    inSpans(
-                        OrderedListSpan(gap, element.order, colorSecondary)
-                    ) {
+                    inSpans(OrderedListSpan(gap, element.order, colorPrimary)) {
                         for (child in element.elements) {
                             buildElement(child, builder)
                         }
                     }
                 }
-                is Element.BlockCode -> {
-                    inSpans(
-                        BlockCodeSpan(colorOnSurface, colorSurface, cornerRadius, gap, element.type)
-                    ) {
-                        append(element.text)
-//                        for (child in element.elements) {
-//                            buildElement(child, builder)
-//                        }
-                    }
-                }
+
                 else -> append(element.text)
             }
         }
