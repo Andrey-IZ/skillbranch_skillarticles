@@ -2,7 +2,10 @@ package ru.skillbranch.skillarticles.extensions
 
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.view.*
+import androidx.core.view.marginBottom
+import androidx.core.view.marginLeft
+import androidx.core.view.marginRight
+import androidx.core.view.marginTop
 
 fun View.setMarginOptionally(
     left: Int = marginLeft,
@@ -10,13 +13,18 @@ fun View.setMarginOptionally(
     right: Int = marginRight,
     bottom: Int = marginBottom
 ) {
-    val l = if (left != marginLeft) left + marginLeft else left
-    val t = if (top != marginTop) top + marginTop else top
-    val r = if (right != marginRight) right + marginRight else right
-    val b = if (bottom != marginBottom) bottom + marginBottom else bottom
-
-    val lp = layoutParams as ViewGroup.MarginLayoutParams
-    lp.setMargins(l, t, r, b)
-    layoutParams = lp
+    if (layoutParams is ViewGroup.LayoutParams) {
+        val params = layoutParams as ViewGroup.MarginLayoutParams
+        params.setMargins(left, top, right, bottom)
+        requestLayout()
+    }
 }
 
+fun View.setPaddingOptionally(
+    left: Int = paddingLeft,
+    right: Int = paddingRight,
+    top: Int = paddingTop,
+    bottom: Int = paddingBottom
+) {
+    setPadding(left, top, right, bottom)
+}

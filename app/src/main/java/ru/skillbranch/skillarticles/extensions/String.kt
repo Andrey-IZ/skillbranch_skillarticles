@@ -2,19 +2,11 @@ package ru.skillbranch.skillarticles.extensions
 
 fun String?.indexesOf(substr: String, ignoreCase: Boolean = true): List<Int> {
 
-    val pattern = substr.replace("(\\W|\\S)", "")
-    if (pattern.isEmpty()) return emptyList()
+    if (this.isNullOrBlank() || substr.isBlank()) return emptyList()
 
-    val flags = mutableSetOf(RegexOption.MULTILINE)
-    if (ignoreCase)
-        flags.add(RegexOption.IGNORE_CASE)
-    val re = Regex(pattern, flags)
+    val regex = if (ignoreCase) substr.toRegex(RegexOption.IGNORE_CASE) else substr.toRegex()
 
-    val results = this?.let {
-        re.findAll(it)
-            .map { matchResult -> matchResult.range.first }
-            .toList()
-    }
-
-    return results ?: emptyList()
+    return regex.findAll(this, 0)
+        .map { it.range.first }
+        .toList()
 }

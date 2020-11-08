@@ -12,7 +12,6 @@ import androidx.core.animation.doOnEnd
 import androidx.core.view.isVisible
 import com.google.android.material.shape.MaterialShapeDrawable
 import kotlinx.android.synthetic.main.layout_bottombar.view.*
-import kotlinx.android.synthetic.main.search_view_layout.view.*
 import ru.skillbranch.skillarticles.R
 import ru.skillbranch.skillarticles.ui.custom.behaviors.BottombarBehavior
 import kotlin.math.hypot
@@ -103,8 +102,6 @@ class Bottombar @JvmOverloads constructor(
             0 -> btn_result_up.isEnabled = false
             searchCount -1 -> btn_result_down.isEnabled = false
         }
-
-        search_view?.requestFocus()
     }
 
     private class SavedState : BaseSavedState, Parcelable {
