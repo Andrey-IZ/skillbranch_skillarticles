@@ -14,10 +14,6 @@ class CheckableImageView @JvmOverloads constructor(
 
     private var checked = false
 
-    companion object {
-        private val CHECKED_STATE_SET = intArrayOf(android.R.attr.state_checked)
-    }
-
     init {
         setOnClickListener(this)
     }
@@ -44,5 +40,8 @@ class CheckableImageView @JvmOverloads constructor(
         toggle()
     }
 
+    companion object {
+        private val CHECKED_STATE_SET = intArrayOf(android.R.attr.state_checked)
+    }
 
 }

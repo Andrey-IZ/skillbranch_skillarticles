@@ -3,7 +3,6 @@ package ru.skillbranch.skillarticles.viewmodels
 import androidx.annotation.UiThread
 import androidx.annotation.VisibleForTesting
 import androidx.lifecycle.*
-import java.lang.IllegalArgumentException
 
 abstract class BaseViewModel<T>(initState: T) : ViewModel() {
     @VisibleForTesting(otherwise = VisibleForTesting.PROTECTED)
@@ -47,9 +46,9 @@ abstract class BaseViewModel<T>(initState: T) : ViewModel() {
         notifications.value = Event(content)
     }
 
-    /**
-     * более компактная форма записи observe принимает последним аргументом лямбда выражение
-     * обрабатывающее изменение текущего состояния
+    /***
+     * более компактная форма записи observe() метода LiveData принимает последним аргумент лямбда
+     * выражение обрабатывающее изменение текущего стостояния
      */
     fun observeState(owner: LifecycleOwner, onChanged: (newState: T) -> Unit) {
         state.observe(owner, Observer { onChanged(it!!) })
@@ -84,7 +83,7 @@ class ViewModelFactory(private val params: String) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ArticleViewModel::class.java)) {
             return ArticleViewModel(params) as T
-        }
+        } else
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
