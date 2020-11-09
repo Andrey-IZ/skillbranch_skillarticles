@@ -1,6 +1,3 @@
 <resources>
-    <string name="app_name">SkillArticles</string>
-    <string name="TAG">skillarticles</string>
-    <string name="hint_search">Search</string>
-    <string name="menu_title_search">search</string>
+    <string name="app_name">Skill Articles</string>
 </resources>

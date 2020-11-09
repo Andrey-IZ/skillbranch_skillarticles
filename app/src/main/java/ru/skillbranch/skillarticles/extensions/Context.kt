@@ -23,17 +23,17 @@ fun Context.dpToIntPx(dp: Int): Int {
     ).toInt()
 }
 
-val Context.isNetworkAvailable: Boolean
-    get() {
-        val cm = this.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            cm.activeNetwork?.run {
-                val nc = cm.getNetworkCapabilities(this)
-                nc!!.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) || nc.hasTransport(
-                    NetworkCapabilities.TRANSPORT_WIFI
-                )
-            } ?: false
-        } else {
-            cm.activeNetworkInfo?.run { isConnectedOrConnecting } ?: false
-        }
-    }
+//val Context.isNetworkAvailable: Boolean
+//    get() {
+//        val cm = this.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+//        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+//            cm.activeNetwork?.run {
+//                val nc = cm.getNetworkCapabilities(this)
+//                nc!!.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) || nc.hasTransport(
+//                    NetworkCapabilities.TRANSPORT_WIFI
+//                )
+//            } ?: false
+//        } else {
+//            cm.activeNetworkInfo?.run { isConnectedOrConnecting } ?: false
+//        }
+//    }
