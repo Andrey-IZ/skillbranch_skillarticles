@@ -1,26 +1,6 @@
 package ru.skillbranch.skillarticles.viewmodels.article
 
-import androidx.lifecycle.LiveData
-import ru.skillbranch.skillarticles.data.ArticleData
-import ru.skillbranch.skillarticles.data.ArticlePersonalInfo
-import ru.skillbranch.skillarticles.data.repositories.MarkdownElement
-
 interface IArticleViewModel {
-    /**
-     * Получение полной информации о статье из сети
-     * (или базы данных если она сохранена, наличие статьи в базе не надо реализовывать в данном уроке)
-     */
-    fun getArticleContent(): LiveData<List<MarkdownElement>?>
-
-    /**
-     * Получение краткой информации о статье из базы данных
-     */
-    fun getArticleData(): LiveData<ArticleData?>
-
-    /**
-     * Получение пользовательской информации о статье из базы данных
-     */
-    fun getArticlePersonalInfo(): LiveData<ArticlePersonalInfo?>
 
     /**
      * Получение настроек приложения
@@ -61,7 +41,7 @@ interface IArticleViewModel {
      * необходимо отобразить сообщение с ошибкой пользователю (Notify.ErrorMessage) "Share is not implemented"
      * и текстом errLabel "OK"
      */
-    fun handleShare()
+    fun handleShare(handleShareCallback: () -> Unit)
 
     /**
      * обрабока нажатия на кнопку btn_settings
@@ -100,5 +80,5 @@ interface IArticleViewModel {
     /**
      * обрабока отправки комментария, если пользователь не авторизован отобразить экран авторизации
      **/
-    fun handleSendComment()
+    fun handleSendComment(comment: String?)
 }

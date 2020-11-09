@@ -3,36 +3,55 @@ package ru.skillbranch.skillarticles.ui.article
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.graphics.drawable.Drawable
 import android.os.Bundle
+import android.text.SpannableStringBuilder
+import android.text.method.LinkMovementMethod
 import android.view.Menu
 import android.view.MenuItem
 import android.view.WindowManager
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.widget.SearchView
+import androidx.core.content.FileProvider
+import androidx.core.text.buildSpannedString
+import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.navArgs
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.DataSource
+import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
+import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.RequestOptions.circleCropTransform
+import com.bumptech.glide.request.target.Target
 import com.google.android.material.appbar.AppBarLayout
+import kotlinx.android.synthetic.main.activity_root.*
 import kotlinx.android.synthetic.main.fragment_article.*
 import kotlinx.android.synthetic.main.layout_bottombar.view.*
 import kotlinx.android.synthetic.main.layout_submenu.view.*
-import kotlinx.android.synthetic.main.search_view_layout.*
+import kotlinx.android.synthetic.main.search_view_layout.view.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import ru.skillbranch.skillarticles.R
+import ru.skillbranch.skillarticles.data.repositories.Element
 import ru.skillbranch.skillarticles.data.repositories.MarkdownElement
-import ru.skillbranch.skillarticles.extensions.dpToIntPx
-import ru.skillbranch.skillarticles.extensions.format
-import ru.skillbranch.skillarticles.extensions.hideKeyboard
-import ru.skillbranch.skillarticles.extensions.setMarginOptionally
+import ru.skillbranch.skillarticles.extensions.*
 import ru.skillbranch.skillarticles.ui.base.*
 import ru.skillbranch.skillarticles.ui.custom.ArticleSubmenu
 import ru.skillbranch.skillarticles.ui.custom.Bottombar
+import ru.skillbranch.skillarticles.ui.custom.ShimmerDrawable
+import ru.skillbranch.skillarticles.ui.custom.markdown.MarkdownBuilder
 import ru.skillbranch.skillarticles.ui.delegates.RenderProp
 import ru.skillbranch.skillarticles.viewmodels.article.ArticleState
 import ru.skillbranch.skillarticles.viewmodels.article.ArticleViewModel
 import ru.skillbranch.skillarticles.viewmodels.base.IViewModelState
+import ru.skillbranch.skillarticles.viewmodels.base.Loading
 import ru.skillbranch.skillarticles.viewmodels.base.ViewModelFactory
 
 
@@ -44,11 +63,20 @@ class ArticleFragment : BaseFragment<ArticleViewModel>(), IArticleView {
             params = args.articleId
         )
     }
+
+    private val commentsAdapter by lazy {
+        CommentsAdapter {
+            viewModel.handleReplyTo(it.id, it.user.name)
+            et_comment.requestFocus()
+            scroll.smoothScrollTo(0, wrap_comments.top)
+            requireContext().showKeyboard(et_comment)
+        }
+    }
+
     override val layout: Int = R.layout.fragment_article
     override val binding: ArticleBinding by lazy { ArticleBinding() }
     override val prepareToolbar: (ToolbarBuilder.() -> Unit)? = {
-        this.setTitle(args.title)
-            .setSubtitle(args.category)
+        this.setSubtitle(args.category)
             .setLogo(args.categoryIcon)
             .addMenuItem(
                 MenuItemHolder(
@@ -71,13 +99,61 @@ class ArticleFragment : BaseFragment<ArticleViewModel>(), IArticleView {
     private val submenu
         get() = root.findViewById<ArticleSubmenu>(R.id.submenu)
 
+    private val handleShareCallback = {
+        if (binding.source.isNotBlank()) {
+
+            lifecycleScope.launch(Dispatchers.IO) {
+                val sourceFile =
+                    Glide.with(root).asFile().load(args.poster).submit()
+                        .get()
+
+                val sourceUri = FileProvider.getUriForFile(
+                    requireContext(),
+                    "${requireContext().packageName}.provider",
+                    sourceFile
+                )
+                withContext(Dispatchers.Main) {
+
+                    val share = Intent.createChooser(Intent().apply {
+                        action = Intent.ACTION_SEND
+                        putExtra(Intent.EXTRA_TEXT, binding.source)
+                        putExtra(Intent.EXTRA_TITLE, args.title)
+                        putExtra(Intent.EXTRA_SUBJECT, args.title)
+
+                        //type = "text/plain"
+                        data = sourceUri
+                        flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    }, null)
+                    startActivity(share)
+                }
+                //Log.d("123456", sourceUri.toString())
+            }
+        }
+
+
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setHasOptionsMenu(true)
     }
 
+    override fun renderLoading(loadingState: Loading) {
+        when (loadingState) {
+            Loading.SHOW_LOADING -> if (!refresh.isRefreshing) root.progress.isVisible = true
+            Loading.SHOW_BLOCKING_LOADING -> refresh.isRefreshing = false
+            Loading.HIDE_LOADING -> {
+                root.progress.isVisible = false
+                if (refresh.isRefreshing) refresh.isRefreshing = false
+            }
+        }
+    }
+
     override fun setupViews() {
         // window resize options
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+//            root.window.setDecorFitsSystemWindows(true)
+//        else
         root.window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
 
         setupBottomBar()
@@ -87,14 +163,82 @@ class ArticleFragment : BaseFragment<ArticleViewModel>(), IArticleView {
         val avatarSize = root.dpToIntPx(40)
         val cornerRadius = root.dpToIntPx(8)
 
+        val baseColor = root.getColor(R.color.color_gray_light)
+        val posterWidth = resources.displayMetrics.widthPixels - root.dpToIntPx(32)
+        val posterHeight = (posterWidth / 16f * 9).toInt()
+        val highlightColor = requireContext().getColor(R.color.color_divider)
+
+        val avatarShimmer = ShimmerDrawable.Builder()
+            .setBaseColor(baseColor)
+            .setHighlightColor(highlightColor)
+            .setShimmerWidth(posterWidth)
+            .addShape(ShimmerDrawable.Shape.Round(avatarSize))
+            .build()
+            .apply { start() }
+
+        val posterShimmer = ShimmerDrawable.Builder()
+            .setBaseColor(baseColor)
+            .setHighlightColor(highlightColor)
+            .addShape(
+                ShimmerDrawable.Shape.Rectangle(
+                    width = posterWidth,
+                    height = posterHeight,
+                    cornerRadius = cornerRadius
+                )
+            )
+            .build()
+            .apply { start() }
+
         Glide.with(root)
             .load(args.authorAvatar)
+            .listener(object : RequestListener<Drawable> {
+                override fun onLoadFailed(
+                    e: GlideException?,
+                    model: Any?,
+                    target: Target<Drawable>?,
+                    isFirstResource: Boolean
+                ): Boolean = false
+
+                override fun onResourceReady(
+                    resource: Drawable?,
+                    model: Any?,
+                    target: Target<Drawable>?,
+                    dataSource: DataSource?,
+                    isFirstResource: Boolean
+                ): Boolean {
+                    avatarShimmer.stop()
+                    return false
+                }
+
+            })
+            .placeholder(avatarShimmer)
             .apply(circleCropTransform())
             .override(avatarSize)
             .into(iv_author_avatar)
 
         Glide.with(root)
             .load(args.poster)
+            .listener(object : RequestListener<Drawable> {
+                override fun onLoadFailed(
+                    e: GlideException?,
+                    model: Any?,
+                    target: Target<Drawable>?,
+                    isFirstResource: Boolean
+                ): Boolean = false
+
+                override fun onResourceReady(
+                    resource: Drawable?,
+                    model: Any?,
+                    target: Target<Drawable>?,
+                    dataSource: DataSource?,
+                    isFirstResource: Boolean
+                ): Boolean {
+                    posterShimmer.stop()
+                    return false
+                }
+
+            })
+            .placeholder(posterShimmer)
             .transform(CenterCrop(), RoundedCorners(cornerRadius))
             .into(iv_poster)
 
@@ -102,11 +246,32 @@ class ArticleFragment : BaseFragment<ArticleViewModel>(), IArticleView {
         tv_author.text = args.author
         tv_date.text = args.date.format()
 
+        et_comment.text = SpannableStringBuilder(viewModel.currentState.commentText ?: "")
+
         et_comment.setOnEditorActionListener { view, _, _ ->
-            root.hideKeyboard(view)
-            viewModel.handleSendComment()
+            requireContext().hideKeyboard(view)
+            viewModel.handleSendComment(view.text.toString())
+            //view.clearFocus()
             true
         }
+
+        et_comment.setOnFocusChangeListener { _, hasFocus -> viewModel.handleCommentFocus(hasFocus) }
+
+        wrap_comments.setEndIconOnClickListener { view ->
+            requireContext().hideKeyboard(view)
+            viewModel.handleClearComment()
+        }
+
+        refresh.setOnRefreshListener {
+            viewModel.refresh()
+        }
+
+        with(rv_comments) {
+            layoutManager = LinearLayoutManager(requireContext())
+            adapter = commentsAdapter
+        }
+
+        viewModel.observeList(viewLifecycleOwner) { commentsAdapter.submitList(it) }
     }
 
     override fun onDestroyView() {
@@ -121,7 +286,7 @@ class ArticleFragment : BaseFragment<ArticleViewModel>(), IArticleView {
 
     override fun hideSearchBar() {
         bottombar.setSearchState(false)
-        scroll.setMarginOptionally(bottom = root.dpToIntPx(0))
+        scroll.setMarginOptionally(bottom = 0)
     }
 
     override fun onPrepareOptionsMenu(menu: Menu) {
@@ -135,7 +300,7 @@ class ArticleFragment : BaseFragment<ArticleViewModel>(), IArticleView {
             menuItem.expandActionView()
             searchView.setQuery(binding.searchQuery, false)
 
-            if (binding.isFocusedSearch) search_view?.requestFocus()
+            if (binding.isFocusedSearch) searchView.requestFocus()
             else searchView.clearFocus()
         }
 
@@ -171,22 +336,21 @@ class ArticleFragment : BaseFragment<ArticleViewModel>(), IArticleView {
         submenu.switch_mode.setOnClickListener { viewModel.handleNightMode() }
     }
 
-    private fun setupBottomBar(){
-
+    private fun setupBottomBar() {
         bottombar.btn_like.setOnClickListener { viewModel.handleLike() }
         bottombar.btn_bookmark.setOnClickListener { viewModel.handleBookmark() }
-        bottombar.btn_share.setOnClickListener { viewModel.handleShare() }
+        bottombar.btn_share.setOnClickListener { viewModel.handleShare(handleShareCallback) }
         bottombar.btn_settings.setOnClickListener { viewModel.handleToggleMenu() }
 
         bottombar.btn_result_up.setOnClickListener {
             if (!tv_text_content.hasFocus()) tv_text_content.requestFocus()
-            root.hideKeyboard(it)
+            requireContext().hideKeyboard(it)
             viewModel.handleUpResult()
         }
 
         bottombar.btn_result_down.setOnClickListener {
             if (!tv_text_content.hasFocus()) tv_text_content.requestFocus()
-            root.hideKeyboard(it)
+            requireContext().hideKeyboard(it)
             viewModel.handleDownResult()
         }
 
@@ -210,10 +374,14 @@ class ArticleFragment : BaseFragment<ArticleViewModel>(), IArticleView {
         var isFocusedSearch: Boolean = false
         var searchQuery: String? = null
 
-        private var isLoadingContent by RenderProp(true)
-
+        private var isLoadingContent by RenderProp(false) {
+            tv_text_content.isLoading = it
+            if (it) setupCopyListener()
+        }
         private var isLike: Boolean by RenderProp(false) { bottombar.btn_like.isChecked = it }
-        private var isBookmark: Boolean by RenderProp(false) { bottombar.btn_bookmark.isChecked = it }
+        private var isBookmark: Boolean by RenderProp(false) {
+            bottombar.btn_bookmark.isChecked = it
+        }
         private var isShowMenu: Boolean by RenderProp(false) {
             bottombar.btn_settings.isChecked = it
             if (it) submenu.open() else submenu.close()
@@ -231,7 +399,7 @@ class ArticleFragment : BaseFragment<ArticleViewModel>(), IArticleView {
             }
         }
 
-        private var isDarkMode: Boolean by RenderProp(value=false, needInit = false) {
+        private var isDarkMode: Boolean by RenderProp(value = false, needInit = false) {
             submenu.switch_mode.isChecked = it
             root.delegate.localNightMode = if (it) AppCompatDelegate.MODE_NIGHT_YES
             else AppCompatDelegate.MODE_NIGHT_NO
@@ -258,55 +426,99 @@ class ArticleFragment : BaseFragment<ArticleViewModel>(), IArticleView {
         private var searchPosition: Int by RenderProp(0)
 
         private var content: List<MarkdownElement> by RenderProp(emptyList<MarkdownElement>()) {
-            tv_text_content.isLoading = it.isEmpty()
             tv_text_content.setContent(it)
-            if (it.isNotEmpty()) setupCopyListener()
-
         }
 
-        override val afterInflated: (() -> Unit)? =
-            {
-                dependsOn<Boolean, Boolean, List<Pair<Int, Int>>, Int>(
-                    ::isLoadingContent,
-                    ::isSearch,
-                    ::searchResults,
-                    ::searchPosition
-                ) { ilc, iss, sr, sp ->
-                    if (!ilc && iss) {
-                        tv_text_content.renderSearchResult(sr)
-                        tv_text_content.renderSearchPosition(sr.getOrNull(sp))
-                    }
-                    if (!ilc && !iss) {
-                        tv_text_content.clearSearchResult()
-                    }
+        private val markdownBuilder = MarkdownBuilder(requireContext())
 
-                    bottombar.bindSearchInfo(sr.size, sp)
-                }
+        private var hashtags: List<String> by RenderProp(emptyList()) {
+            tv_hashtags.setText(
+                buildSpannedString {
+                    it.forEach {
+                        markdownBuilder.buildElement(Element.InlineCode(it), this)
+                        append(" ")
+                    }
+                },
+                TextView.BufferType.SPANNABLE
+            )
+        }
+
+        var source: String by RenderProp("") {
+            if (it.isNotEmpty()) {
+                tv_source.isVisible = true
+                tv_source.setText(
+                    buildSpannedString {
+                        markdownBuilder.buildElement(Element.Link(it, "Article source"), this)
+                    },
+                    TextView.BufferType.SPANNABLE
+                )
+                tv_source.movementMethod = LinkMovementMethod.getInstance()
+            } else {
+                tv_source.isVisible = false
             }
+        }
+
+
+        private var answerTo by RenderProp("Comment") { wrap_comments.hint = it }
+        private var isShowBottombar by RenderProp(true) {
+            if (it) bottombar.show() else bottombar.hide()
+            if (submenu.isOpen) submenu.isVisible = it
+        }
+
+        private var comment by RenderProp("") {
+            et_comment.setText(it)
+            if (it.isBlank() && et_comment.hasFocus()) et_comment.clearFocus()
+        }
+
+        override val afterInflated: (() -> Unit)? = {
+            dependsOn<Boolean, Boolean, List<Pair<Int, Int>>, Int>(
+                ::isLoadingContent,
+                ::isSearch,
+                ::searchResults,
+                ::searchPosition
+            ) { ilc, iss, sr, sp ->
+                if (!ilc && iss) {
+                    tv_text_content.renderSearchResult(sr)
+                    tv_text_content.renderSearchPosition(sr.getOrNull(sp))
+                }
+                if (!ilc && !iss) {
+                    tv_text_content.clearSearchResult()
+                }
+
+                bottombar.bindSearchInfo(sr.size, sp)
+            }
+        }
 
         override fun bind(data: IViewModelState) {
             data as ArticleState
-
             isLike = data.isLike
             isBookmark = data.isBookmark
             isShowMenu = data.isShowMenu
             isBigText = data.isBigText
             isDarkMode = data.isDarkMode
             content = data.content
+            source = data.source ?: ""
+            hashtags = data.tags
+
 
             isLoadingContent = data.isLoadingContent
             isSearch = data.isSearch
             searchQuery = data.searchQuery
             searchPosition = data.searchPosition
             searchResults = data.searchResults
+            answerTo = data.answerTo ?: "Comment"
+            isShowBottombar = data.showBottomBar
+            comment = data.commentText ?: ""
         }
 
         override fun saveUi(outState: Bundle) {
-            outState.putBoolean(::isFocusedSearch.name, search_view?.hasFocus() ?: false)
+            outState.putBoolean(::isFocusedSearch.name, toolbar.search_view?.hasFocus() ?: false)
+            //outState.putString(::comment.name, comment)
         }
 
         override fun restoreUi(savedState: Bundle?) {
             isFocusedSearch = savedState?.getBoolean(::isFocusedSearch.name) ?: false
+            // comment = savedState?.getString(::comment.name, "dd") ?: ""
         }
     }
 }
