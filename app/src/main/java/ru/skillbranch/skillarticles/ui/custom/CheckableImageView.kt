@@ -10,20 +10,17 @@ class CheckableImageView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : ImageView(context, attrs, defStyleAttr), Checkable, View.OnClickListener {
+): ImageView(context, attrs, defStyleAttr), Checkable, View.OnClickListener {
 
     private var checked = false
+
+    companion object {
+        private val CHECKED_STATE_SET = intArrayOf(android.R.attr.state_checked)
+    }
 
     init {
         setOnClickListener(this)
     }
-
-    override fun onCreateDrawableState(extraSpace: Int): IntArray {
-        val drawableState = super.onCreateDrawableState(extraSpace + 1)
-        if (isChecked) View.mergeDrawableStates(drawableState, CHECKED_STATE_SET)
-        return drawableState
-    }
-
     override fun isChecked(): Boolean = checked
 
     override fun toggle() {
@@ -31,17 +28,18 @@ class CheckableImageView @JvmOverloads constructor(
     }
 
     override fun setChecked(check: Boolean) {
-        if (checked == check) return
+        if (isChecked == check) return
         checked = check
         refreshDrawableState()
+    }
+
+    override fun onCreateDrawableState(extraSpace: Int): IntArray {
+        val drawableState = super.onCreateDrawableState(extraSpace + 1)
+        if(isChecked) View.mergeDrawableStates(drawableState, CHECKED_STATE_SET)
+        return drawableState
     }
 
     override fun onClick(v: View?) {
         toggle()
     }
-
-    companion object {
-        private val CHECKED_STATE_SET = intArrayOf(android.R.attr.state_checked)
-    }
-
 }

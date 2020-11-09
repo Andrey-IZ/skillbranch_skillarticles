@@ -8,54 +8,45 @@ import ru.skillbranch.skillarticles.extensions.data.toAppSettings
 import ru.skillbranch.skillarticles.extensions.data.toArticlePersonalInfo
 import ru.skillbranch.skillarticles.extensions.format
 
-class ArticleViewModel(private val articleId: String) : IArticleViewModel,
-    BaseViewModel<ArticleState>(ArticleState()) {
-    private val repository = ArticleRepository
+class ArticleViewModel(private val articleId: String):
+    BaseViewModel<ArticleState>(ArticleState()), IArticleViewModel {
 
+    private val repository = ArticleRepository
 
     init {
         subscribeOnDataSource(getArticleData()) { article, state ->
-            article?.let {
-                state.copy(
-                    shareLink = it.shareLink,
-                    title = it.title,
-                    category = it.category,
-                    date = it.date.format(),
-                    author = it.author,
-                    categoryIcon = it.categoryIcon,
-                    poster = it.poster
-                )
-            }
+            article ?: return@subscribeOnDataSource null
+            state.copy(
+                shareLink = article.shareLink,
+                title = article.title,
+                category = article.category,
+                categoryIcon = article.categoryIcon,
+                date = article.date.format()
+            )
         }
 
         subscribeOnDataSource(getArticleContent()) { content, state ->
-            content?.let {
-                state.copy(
-                    isLoadingContent = false,
-                    content = content
-
-                )
-            }
+            content ?: return@subscribeOnDataSource null
+            state.copy(
+                isLoadingContent = false,
+                content = content
+            )
         }
 
         subscribeOnDataSource(getArticlePersonalInfo()) { info, state ->
-            info?.let {
-                state.copy(
-                    isBookmark = it.isBookmark,
-                    isLike = it.isLike
-                )
-            }
+            info ?: return@subscribeOnDataSource null
+            state.copy(
+                isBookmark = info.isBookmark,
+                isLike = info.isLike
+            )
         }
 
         subscribeOnDataSource(repository.getAppSettings()) { settings, state ->
-            settings.let {
-                state.copy(
-                    isDarkMode = it.isDarkMode,
-                    isBigText = it.isBigText
-                )
-            }
+            state.copy(
+                isDarkMode = settings.isDarkMode,
+                isBigText = settings.isBigText
+            )
         }
-
     }
 
     override fun getArticleContent(): LiveData<List<Any>?> {
@@ -84,34 +75,32 @@ class ArticleViewModel(private val articleId: String) : IArticleViewModel,
     }
 
     override fun handleBookmark() {
-        repository.updateArticlePersonalInfo(currentState.toArticlePersonalInfo().copy(isBookmark = !currentState.isBookmark))
+        val info = currentState.toArticlePersonalInfo()
+        repository.updateArticlePersonalInfo(info.copy(isBookmark = !info.isBookmark))
 
-        val msg =
-            if (currentState.isBookmark) Notify.TextMessage("Add to bookmarks")
-            else Notify.TextMessage("Remove from bookmarks")
-
+        val msg = if (currentState.isBookmark) Notify.TextMessage("Add to bookmarks")
+        else {
+            Notify.TextMessage("Remove from bookmarks")
+        }
         notify(msg)
-
     }
 
     override fun handleLike() {
-
         val toggleLike = {
             val info = currentState.toArticlePersonalInfo()
             repository.updateArticlePersonalInfo(info.copy(isLike = !info.isLike))
         }
-
         toggleLike()
 
-        val msg =
-            if (currentState.isLike) Notify.TextMessage("Mark is liked")
-            else { //FIXME change to "Marked as liked"
-                Notify.ActionMessage(
-                    "Don`t like it anymore", //FIXME change to "Don't like it anymore?"
-                    "No, still like it",
-                    toggleLike
-                )
-            }
+
+        val msg = if (currentState.isLike) Notify.TextMessage("Mark is liked")
+        else {
+            Notify.ActionMessage(
+                "Don`t like it anymore",
+                "No, still like it",   // label on the snackbar
+                toggleLike  // handler function, if press "No, still likes it " on snackbar
+            )
+        }
         notify(msg)
     }
 
@@ -131,31 +120,28 @@ class ArticleViewModel(private val articleId: String) : IArticleViewModel,
     override fun handleSearch(query: String?) {
         updateState { it.copy(searchQuery = query) }
     }
-
-
 }
 
-data class ArticleState(
-    val isAuth: Boolean = false,
-    val isLoadingContent: Boolean = true,
-    val isLoadingReviews: Boolean = true,
-    val isLike: Boolean = false,
-    val isBookmark: Boolean = false,
-    val isShowMenu: Boolean = false,
-    val isBigText: Boolean = false,
-    val isDarkMode: Boolean = false,
-    val isSearch: Boolean = false,
-    val searchQuery: String? = null,
-    val searchResults: List<Pair<Int, Int>> = emptyList(),
-    val searchPosition: Int = 0,
-    val shareLink: String? = null,
-    val title: String? = null,
-    val category: String? = null,
-    val categoryIcon: Any? = null,
-    val date: String? = null,
-    val author: Any? = null,
-    val poster: String? = null,
-    val content: List<Any> = emptyList(),
-    val reviews: List<Any> = emptyList()
-
+data class ArticleState (
+    val isAuth: Boolean = false,             // пользователь авторизован
+    val isLoadingContent: Boolean = true,    // контент загружается
+    val isLoadingReviews: Boolean = true,    // отзывы загружаются
+    val isLike: Boolean = false,             // отмечено как Like
+    val isBookmark: Boolean = false,         // в заклвдках
+    val isShowMenu: Boolean = false,         // отображается меню
+    val isBigText: Boolean = false,          // щрифт увеличен
+    val isDarkMode: Boolean = false,         // тёмный режим
+    val isSearch: Boolean = false,           // режим поиска
+    val searchQuery: String? = null,         // поискоый запрос
+    val searchResults: List<Pair<Int, Int>> = emptyList(),  // результата поиска (стартовая и кончная поизция)
+    val searchPosition: Int = 0,             // текущая поизиция найденного результата
+    val shareLink: String? = null,           // ссылка Share
+    val title: String? = null,               // заголовок статьи
+    val category: String? = null,            // категория
+    val categoryIcon: Any? = null,           // иконка категории
+    val date: String? = null,                // дата публикации
+    val author: Any? = null,                 // автор статьи
+    val poster: String? = null,              // обложка статьи
+    val content: List<Any> = emptyList(),    // контент
+    val reviews: List<Any> = emptyList()     // комментарии
 )

@@ -16,11 +16,10 @@
         <item name="colorOnSecondary">@android:color/white</item>
         <item name="colorError">#F44336</item>
         <item name="colorOnError">#FFFFFF</item>
-        <item name="colorSurface">@color/color_surface</item>
+        <item name="colorSurface">@color/color_surface</item>r
         <item name="colorOnSurface">@color/color_on_surface</item>
 
         <item name="snackbarStyle">@style/CustomSnackbar</item>
-        <item name="android:editTextColor">?attr/colorOnPrimary</item>
     </style>
 
     <style name="ArticleBarsTheme" parent="ThemeOverlay.MaterialComponents.Dark.ActionBar">
@@ -28,13 +27,15 @@
         <item name="colorOnPrimary">@color/color_on_article_bar</item>
         <item name="colorSurface">@color/color_article_bar</item>
         <item name="colorControlNormal">@color/color_on_article_bar</item>
+        <!-- for searchView       -->
+        <item name="android:textColorHint">@color/color_gray</item>
+        <item name="android:textColorPrimary">?attr/colorOnPrimary</item>
     </style>
 
-    <style name="ArticleToolbar" parent="Widget.MaterialComponents.Toolbar.Primary">
+    <style name="ArticleToolbar" parent="Widget.MaterialComponents.Toolbar.PrimarySurface">
         <item name="titleTextColor">?attr/colorOnPrimary</item>
         <item name="contentInsetStartWithNavigation">0dp</item>
     </style>
-
 
     <style name="BottombarIcon">
         <item name="android:layout_width">56dp</item>
@@ -47,5 +48,4 @@
     <style name="CustomSnackbar" parent="Widget.MaterialComponents.Snackbar">
         <item name="layout_insetEdge">bottom</item>
     </style>
-
 </resources>
