@@ -1,7 +1,7 @@
 package ru.skillbranch.kotlinexample
 
 import androidx.annotation.VisibleForTesting
-import java.lang.IllegalArgumentException
+import ru.skillbranch.kotlinexample.User.Factory.makeUserFromCsv
 
 object UserHolder {
     private val map = mutableMapOf<String, User>()
@@ -11,85 +11,78 @@ object UserHolder {
         email: String,
         password: String
     ): User {
-        return User.makeUser(
-            fullName,
-            email = email,
-            password = password
-        )
+        return User.makeUser(fullName, email.trim(), password.trim())
             .also { user ->
-                map[user.login]
-                    ?.let { throw IllegalArgumentException("A user with this email already exists") }
-                    ?: let { map[user.login] = user }
-            }
-    }
-
-    fun registerUserByPhone(
-        fullName: String,
-        rawPhone: String
-    ): User {
-        return User.makeUser(
-            fullName,
-            phone = rawPhone
-        )
-            .also { user ->
-                map[user.login]
-                    ?.let { throw IllegalArgumentException("A user with this phone already exists") }
-                    ?: let { map[user.login] = user }
+                if (map.containsKey(user.login))
+                    throw IllegalArgumentException("A user with this email already exists")
+                map[user.login] = user
             }
     }
 
     fun loginUser(login: String, password: String): String? {
-        val loginKey = if (User.isValidPhone(login)) {
-            login.normalizePhone()
-        } else {
-            login.trim()
+        return User.correctLogin(login)?.let {
+            map[it]?.run {
+                if (checkPassword(password)) this.userInfo
+                else null
+            }
         }
-        return map[loginKey]?.run {
-            if (checkPassword(password)) this.userInfo
-            else null
+    }
+
+    @Throws(IllegalArgumentException::class)
+    fun registerUserByPhone(fullName: String, rawPhone: String): User {
+
+        return User.makeUser(fullName, phone = rawPhone).also { user ->
+            if (map.containsKey(user.login))
+                throw IllegalArgumentException("A user with this phone already exists")
+            map[user.login] = user
         }
     }
 
     fun requestAccessCode(login: String) {
-        val loginKey = if (User.isValidPhone(login)) {
-            login.normalizePhone()
-        } else {
-            login.trim()
+        User.correctLogin(login)?.let{
+            map[it]?.requestAccessCode()
         }
-
-        map[loginKey]?.let { it.generateAndSendAccessCode(login) }
     }
 
-    //Реализуй метод importUsers(list: List): List, в качестве аргумента принимает список строк где
-    // разделителем полей является ";" данные перечислены в следующем порядке - Полное имя
-    // пользователя; email; соль:хеш пароля; телефон (
-    // Пример:
-    // " John Doe ;JohnDoe@unknow.com;[B@7591083d:c6adb4becdc64e92857e1e2a0fd6af84;;"
-    // ) метод должен вернуть коллекцию список User (Пример возвращаемого userInfo:
-    //firstName: John
-    //lastName: Doe
-    //login: johndoe@unknow.com
-    //fullName: John Doe
-    //initials: J D
-    //email: JohnDoe@unknow.com
-    //phone: null
-    //meta: {src=csv}
-    //), при этом meta должно содержать "src" : "csv", если сзначение в csv строке пустое то
-    // соответствующее свойство в объекте User должно быть null, обратите внимание что salt и hash
-    // пароля в csv разделены ":" , после импорта пользователей вызов метода loginUser должен
-    // отрабатывать корректно (достаточно по логину паролю)
-    fun importUsers(list: List<String>): List<User> = list
-        .map { it.split(";") }
-        .map { it.map(String::trim) }
-        .map { User.makeUser(it) }
-        .map { user ->
-            map[user.login]
-                ?.let { throw IllegalArgumentException("A user with this login already exists") }
-                ?: let { map[user.login] = user }
-            user
-        }
-
     @VisibleForTesting(otherwise = VisibleForTesting.NONE)
-    fun clearHolder() = map.clear()
+    fun clearHolder() {
+        map.clear()
+    }
 
+    fun importUsers(listString: List<String>): List<User> {
+        val propertySize = 5
+        return listString.filterNot { it.isEmpty() }.map { userStr ->
+            var fullName: String? = null
+            var email : String? = null
+            var salt : String? = null
+            var passwordHash : String? = null
+            var phoneNumber : String? = null
+
+            val props = userStr.split(";")
+            if (props.size != propertySize) return@map null
+            for (i in props.indices) {
+                val property = if (props[i].isBlank()) null else props[i].trim()
+                when (i) {
+                    0 -> fullName = property
+                    1 -> email = property
+                    2 -> {
+                        property?.let {
+                            val password = property.split(":")
+                            if (password.size == 2) {
+                                salt = password[0]
+                                passwordHash = password[1]
+                            }
+                        }
+                    }
+                    4 -> phoneNumber = property
+                }
+            }
+            return@map makeUserFromCsv(
+                fullName = fullName?: "",
+                email = email,
+                phone = phoneNumber,
+                passwordHash = passwordHash,
+                salt = salt)
+        }.filterNotNull()
+    }
 }

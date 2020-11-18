@@ -1,117 +1,92 @@
 package ru.skillbranch.kotlinexample
 
+import android.annotation.SuppressLint
 import androidx.annotation.VisibleForTesting
-import java.lang.IllegalArgumentException
-import java.lang.StringBuilder
 import java.math.BigInteger
 import java.security.MessageDigest
 import java.security.SecureRandom
+import java.util.*
+import kotlin.text.StringBuilder
+
 
 class User private constructor(
-    private var firstName: String,
-    private var lastName: String?,
+    private val firsName: String,
+    private val lastName: String?,
     email: String? = null,
     rawPhone: String? = null,
-    meta: Map<String, Any>? = null,
-    salt: String? = null
+    meta: Map<String, Any?>? = null
 ) {
     val userInfo: String
-
     private val fullName: String
-        get() = listOfNotNull(firstName, lastName)
+        @SuppressLint("DefaultLocale")
+        get() = listOfNotNull(firsName, lastName)
             .joinToString(" ")
             .capitalize()
 
     private val initials: String
-        get() = listOfNotNull(firstName, lastName)
+        get() = listOfNotNull(firsName, lastName)
             .map { it.first().toUpperCase() }
             .joinToString(" ")
 
-    private var phone: String? = null
+    var phone: String? = null
         set(value) {
-            field = value?.normalizePhone()
+            field = correctPhone(value)
         }
 
     private var _login: String? = null
-
     var login: String
         set(value) {
-            _login = value.toLowerCase()
+            _login = correctLogin(value) ?: throw IllegalArgumentException("Entered invalid login")
         }
         get() = _login!!
 
     private var _salt: String? = null
+    private val salt: String by lazy {
+        if (_salt == null) ByteArray(16).also { SecureRandom().nextBytes(it) }.toString()
+        else _salt!!
+    }
 
-    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
-    lateinit var passwordHash: String
+    private var _passwordHash: String? = null
+    private var passwordHash: String = ""
+        get() {
+            return _passwordHash ?: field
+        }
 
     @VisibleForTesting(otherwise = VisibleForTesting.NONE)
     var accessCode: String? = null
 
-    fun generateAndSendAccessCode(phone: String) {
-        accessCode = generateAccessCode().also {
-            passwordHash = encrypt(it)
-            sendAccessCodeToUser(phone, it)
-        }
-    }
-
-    // for email
+    //    for email
     constructor(
-        firstName: String,
+        firsName: String,
         lastName: String?,
-        email: String,
+        email: String?,
         password: String
-    ) : this(firstName, lastName, email = email, meta = mapOf("auth" to "password")) {
-        println("Secondary mail constructor")
+    ) : this(firsName, lastName, email = email, meta = mapOf("auth" to "password")) {
+        println("secondary mail constructor")
         passwordHash = encrypt(password)
     }
 
     // for phone
     constructor(
-        firstName: String,
+        firsName: String,
         lastName: String?,
-        rawPhone: String
-    ) : this(firstName, lastName, rawPhone = rawPhone, meta = mapOf("auth" to "sms")) {
-        println("Secondary phone constructor")
-        generateAndSendAccessCode(rawPhone)
-    }
-
-    // for csv
-    constructor(
-        firstName: String,
-        lastName: String?,
-        email: String?,
-        rawPhone: String?,
-        salt: String,
-        hash: String
-    ) : this(firstName, lastName, email, rawPhone = rawPhone, meta = mapOf("src" to "csv"), salt = salt) {
-        passwordHash = hash
-    }
-
-    private fun generateAccessCode(): String {
-        val possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-
-        return StringBuilder().apply {
-            repeat(6) {
-                (possible.indices).random().also { index ->
-                    append(possible[index])
-                }
-            }
-        }.toString()
+        rawPhone: String?
+    ) : this(firsName, lastName, rawPhone = rawPhone, meta = mapOf("auth" to "sms")) {
+        println("secondary phone constructor")
+        requestAccessCode(rawPhone)
     }
 
     init {
         println("First init block, primary constructor was called")
 
-        check(firstName.isNotBlank()) { "First name must not be blank" }
-        check(!email.isNullOrBlank() || !rawPhone.isNullOrBlank()) { "Email or phone must not be blank" }
+        check(!firsName.isBlank()) { "FirstName must be not blank" }
+        check(email.isNullOrBlank() || rawPhone.isNullOrBlank()) { "Email or phone mustn't be blank" }
 
         phone = rawPhone
-        login = email ?: phone!!
-        _salt = salt ?: ByteArray(16).also { SecureRandom().nextBytes(it) }.toString()
+        login = email ?: phone ?: throw IllegalArgumentException("Enter a valid phone number starting with a + and containing 11 digits")
 
         userInfo = """
-            firstName: $firstName
+            firstName: $firsName
             lastName: $lastName
             login: $login
             fullName: $fullName
@@ -122,99 +97,130 @@ class User private constructor(
         """.trimIndent()
     }
 
-    fun checkPassword(pass: String) = encrypt(pass) == passwordHash
+    fun setHashSalt(salt: String?, hash: String?) {
+        this._salt = salt
+        this._passwordHash = hash
+    }
+
+    fun requestAccessCode(rawPhone: String? = null) {
+        val code = generateAccessCode()
+        passwordHash = encrypt(code)
+        accessCode = code
+        sendAccessCodeToUser(rawPhone?: phone, code)
+    }
+
+    fun checkPassword(password: String): Boolean {
+        return encrypt(password) == passwordHash
+    }
 
     fun changePassword(oldPass: String, newPass: String) {
         if (checkPassword(oldPass)) passwordHash = encrypt(newPass)
-        else throw IllegalAccessException("The entered password does not match the current password")
+        else throw IllegalArgumentException("The entered password doesn't match the current password")
     }
 
-    private fun encrypt(password: String) = _salt.plus(password).md5() // good
+    private fun encrypt(password: String): String = salt.plus(password.md5()) // never do that !!!
+
+    private fun generateAccessCode(): String {
+        val possible = "ABCDEFGHIJKLMNOPQRSTUWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+
+        return StringBuilder().apply {
+            repeat(6) {
+                possible.indices.random().also { index ->
+                    append(possible[index])
+                }
+            }
+        }.toString()
+    }
+
+    private fun sendAccessCodeToUser(phone: String?, code: String) {
+        println("..... sending access code: $code on $phone")
+    }
 
     private fun String.md5(): String {
-        val md = MessageDigest.getInstance("MD5")
-        val digest = md.digest(toByteArray()) // 16 bytes
-        val hexString = BigInteger(1, digest).toString(16)
-        return hexString.padStart(length = 32, padChar = '0')
-    }
+        val md5 = MessageDigest.getInstance("MD5")
+        val digest = md5.digest(toByteArray())  // 16 byte
 
-    private fun sendAccessCodeToUser(phone: String, code: String) {
-        println(".... sending access code: $code on $phone")
+        val hexString = BigInteger(1, digest).toString(16)
+        return hexString.padStart(32, '0')
     }
 
     companion object Factory {
+        private val rePreparePhoneNumber = Regex("[^+\\d]")
+        private val reCheckPhoneNumber = Regex("\\+\\d{11}")
+
+        private val reCheckEmail = Regex("[A-Za-z_]+@[a-z]+\\.[a-z]+")
+
         fun makeUser(
             fullName: String,
             email: String? = null,
             password: String? = null,
             phone: String? = null
         ): User {
-            val (firstName, lastName) = fullName.fullNameToPair()
+            val (firsname, lastname) = fullName.fullNameToPair()
 
             return when {
-                !phone.isNullOrBlank() -> {
-                    if (!isValidPhone(
-                            phone
-                        )
-                    ) throw IllegalArgumentException("Enter a valid phone number starting with a + and containing 11 digits")
-                    else User(
-                        firstName,
-                        lastName,
-                        phone
-                    )
-                }
+                !phone.isNullOrBlank() -> User(firsname, lastname, phone)
                 !email.isNullOrBlank() && !password.isNullOrBlank() -> User(
-                    firstName,
-                    lastName,
-                    email,
-                    password
+                    firsname, lastname,
+                    email, password
                 )
-                else -> throw IllegalArgumentException("Email or phone must not be null or blank")
+                else -> throw IllegalArgumentException("Email or phone must be not null or blank")
             }
         }
 
-        fun makeUser(csv: List<String>): User {
-            check(csv.size == 5) { "Invalid csv record. Must be 5 fields or missing semicolon " +
-                    "at the end: $csv" }
-            val (firstName, lastName) = csv[0].fullNameToPair()
-            val email = csv[1].takeIf(String::isNotEmpty)
-            val (salt, hash) = csv[2].toSaltHashPair()
-            val rawPhone = csv[3].takeIf(String::isNotEmpty)
-            return User(firstName, lastName, email, rawPhone, salt, hash)
+        fun makeUserFromCsv(
+            fullName: String,
+            email: String? = null,
+            salt: String? = null,
+            passwordHash: String? = null,
+            phone: String? = null,
+            meta: Map<String, Any?>? = mapOf("src" to "csv")
+        ): User {
+            val (firsname, lastname) = fullName.fullNameToPair()
+
+            return when {
+                !phone.isNullOrBlank() -> User(firsname, lastname, phone)
+                !email.isNullOrBlank() && !salt.isNullOrBlank() && !passwordHash.isNullOrEmpty() -> User(
+                    firsname, lastname,
+                    email, meta = meta
+                ).apply {
+                    setHashSalt(salt, passwordHash)
+                }
+
+                else -> throw IllegalArgumentException("Email or phone must be not null or blank")
+            }
+        }
+
+        fun correctEmail(rawEmail: String?): String? {
+            return rawEmail?.let {
+                if (it.matches(reCheckEmail)) it.toLowerCase(Locale.US) else null
+            }
+        }
+
+        fun correctPhone(rawPhone: String?): String? {
+            return rawPhone?.replace(rePreparePhoneNumber, "")?.let { phoneNumberStr ->
+                if (phoneNumberStr.matches(reCheckPhoneNumber)) phoneNumberStr
+                else null
+            }
+        }
+
+        fun correctLogin(login: String): String? {
+            return correctEmail(login) ?: correctPhone(login)
         }
 
         private fun String.fullNameToPair(): Pair<String, String?> {
-            return split(" ")
+            return this.split(" ")
                 .filter { it.isNotBlank() }
                 .run {
                     when (size) {
                         1 -> first() to null
                         2 -> first() to last()
                         else -> throw IllegalArgumentException(
-                            "Fullname must contain only first name " +
-                                    "and last name , current split result $this"
+                            "Fullname must contain only first " +
+                                    "name and last name, current split result ${this@fullNameToPair}"
                         )
                     }
                 }
         }
-
-        private fun String.toSaltHashPair(): Pair<String, String> {
-            split(":")
-                .filter { it.isNotBlank() }
-                .run {
-                    if (size == 2) return first() to last()
-                    else throw IllegalArgumentException("Invalid salt:hash string: $this")
-                }
-        }
-
-        fun isValidPhone(phone: String): Boolean {
-            val normalizedPhone = phone.replace(" ", "")
-            val validRegex = """^\+\d((\d{3})|(\(\d{3}\)))\d{3}[-]?\d{2}[-]?\d{2}$""".toRegex()
-            return validRegex.containsMatchIn(normalizedPhone.trim())
-        }
-
     }
-
 }
-
-fun String.normalizePhone() = replace("""[^+\d]""".toRegex(), "")
