@@ -18,7 +18,6 @@ class User private constructor(
 ) {
     val userInfo: String
     private val fullName: String
-        @SuppressLint("DefaultLocale")
         get() = listOfNotNull(firsName, lastName)
             .joinToString(" ")
             .capitalize()
@@ -224,3 +223,4 @@ class User private constructor(
         }
     }
 }
+
