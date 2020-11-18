@@ -24,8 +24,6 @@
             app:subtitle="loading..."
             app:title="@string/app_name">
 
-<<<<<<< HEAD
-=======
 <!--            <SearchView-->
 <!--                android:id="@+id/search_src_text"-->
 <!--                style="@style/AppTheme"-->
@@ -36,7 +34,6 @@
 <!--                android:queryHint="Search"-->
 
 <!--                />-->
->>>>>>> 2eb31b4397e68ebc5ccf0eb8cd5dd912c17cdf74
         </com.google.android.material.appbar.MaterialToolbar>
 
 
@@ -80,12 +77,9 @@
         app:layout_behavior=".ui.custom.behaviors.BottombarBehavior"
         app:layout_insetEdge="bottom" />
 
-<<<<<<< HEAD
-=======
     <!--    app:layout_behavior="com.google.android.material.behavior.HideBottomViewOnScrollBehavior"-->
 
 
->>>>>>> 2eb31b4397e68ebc5ccf0eb8cd5dd912c17cdf74
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
 
